@@ -2,6 +2,11 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Jungle Dangerous">
+<meta name="theme-color" content="#0b1a10">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>JUNGLE DANGEROUS — Niveau 1 : La Jungle Dense</title>
 <style>
@@ -645,6 +650,8 @@ cv.addEventListener('mousedown',()=>{audio();if(state!=='play')advance();});
   const maj=()=>{b.textContent=fsOn()?'⤡':'⛶';};
   document.addEventListener('fullscreenchange',maj);
   document.addEventListener('webkitfullscreenchange',maj);
+  document.addEventListener('fullscreenerror',fsRefus);
+  document.addEventListener('webkitfullscreenerror',fsRefus);
 })();
 (function(){
   const b=document.getElementById('bP');
@@ -668,10 +675,16 @@ function fsCan(){
   if(document.webkitFullscreenEnabled===false)return false;
   return true;
 }
+function estIOS(){
+  const u=navigator.userAgent||'';
+  return /iPhone|iPod|iPad/.test(u)||
+         (navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+}
 function fsRefus(){
   const b=document.getElementById('bF');
   if(b)b.style.opacity='0.45';
-  flash('PLEIN ECRAN INDISPONIBLE ICI','#e8452c');
+  if(estIOS())flash('PARTAGER puis SUR L ECRAN D ACCUEIL','#ffd23f');
+  else flash('PLEIN ECRAN INDISPONIBLE ICI','#e8452c');
 }
 function toggleFS(){
   const d=document.documentElement;
