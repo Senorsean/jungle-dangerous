@@ -663,19 +663,26 @@ function setPause(v){
 function fsOn(){return document.fullscreenElement||document.webkitFullscreenElement||null;}
 function fsCan(){
   const d=document.documentElement;
-  return !!(d&&(d.requestFullscreen||d.webkitRequestFullscreen));
+  if(!d||!(d.requestFullscreen||d.webkitRequestFullscreen))return false;
+  if(document.fullscreenEnabled===false)return false;
+  if(document.webkitFullscreenEnabled===false)return false;
+  return true;
+}
+function fsRefus(){
+  const b=document.getElementById('bF');
+  if(b)b.style.display='none';
+  flash('PLEIN ECRAN INDISPONIBLE ICI','#e8452c');
 }
 function toggleFS(){
   const d=document.documentElement;
   try{
-    if(fsOn()){
-      const x=document.exitFullscreen||document.webkitExitFullscreen;
-      if(x)x.call(document);
-    }else{
-      const r=d.requestFullscreen||d.webkitRequestFullscreen;
-      if(r)r.call(d);
-    }
-  }catch(e){}
+    const f=fsOn()
+      ? (document.exitFullscreen||document.webkitExitFullscreen)
+      : (d.requestFullscreen||d.webkitRequestFullscreen);
+    if(!f){fsRefus();return;}
+    const p=f.call(fsOn()?document:d);
+    if(p&&typeof p.catch==='function')p.catch(function(){fsRefus();});
+  }catch(e){fsRefus();}
 }
 function advance(){
   if(state==='win'){startLevel(LEVEL+1,true);state='play';setTrack(LEVEL===2?'cave':'level');return;}
