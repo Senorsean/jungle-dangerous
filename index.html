@@ -729,6 +729,10 @@ function vineHold(){
   v.om*=0.994;
   v.om=Math.max(-.14,Math.min(.14,v.om));
   v.th+=v.om;
+  const TMAX=1.35;
+  if(Math.abs(v.th)>1.05)v.om*=0.90;
+  if(v.th> TMAX){v.th= TMAX;if(v.om>0)v.om=0;}
+  if(v.th<-TMAX){v.th=-TMAX;if(v.om<0)v.om=0;}
   P.x=v.ax+Math.sin(v.th)*v.L-P.w/2;
   P.y=v.ay+Math.cos(v.th)*v.L-10;
   P.vx=Math.cos(v.th)*v.L*v.om;         /* vitesse tangentielle */
@@ -779,6 +783,8 @@ function idleVines(){
     v.om*=0.985;
     v.om+=Math.sin(v.t)*0.00018;        /* souffle de vent, léger */
     v.th+=v.om;
+    if(v.th> 1.35){v.th= 1.35;v.om=0;}
+    if(v.th<-1.35){v.th=-1.35;v.om=0;}
   }
 }
 
