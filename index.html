@@ -414,7 +414,7 @@ function buildL1(){
   ground(37,55);
   check(76,13);
   plat(40,3,12); gem(41,11);
-  plat(46,3,10); gem(47,9);
+  plat(46,3,12); gem(47,11);
   plat(52,3,12);
   spawn('raptor',44,13);
   vine(35,4,270);          /* premier saut à la liane : le gouffre reste sautable, c'est l'école */
@@ -427,16 +427,16 @@ function buildL1(){
   for(let x=71;x<=73;x++){for(let y=14;y<H;y++)g[y][x]=1;} spikes(71,73,13);
   ground(74,95);
 
-  plat(78,3,11); plat(84,3,9); plat(90,3,11);
-  gem(79,10);gem(85,8);gem(91,10);gem(87,7);
-  dyn(85,8);
+  plat(78,3,12); plat(82,3,10); plat(90,3,12);
+  gem(79,11);gem(83,9);gem(91,11);gem(87,12);
+  dyn(83,9);
   spawn('ptero',82,5); spawn('ptero',92,4,{ph:2});
   ground(96,115);
   check(120,13);
 
   spawn('stego',103,13); spawn('stego',110,13,{dir:-1});
-  gem(100,13);gem(106,10);gem(113,13);
-  plat(105,3,11);
+  gem(100,13);gem(106,11);gem(113,13);
+  plat(105,3,12);
   crack(118,13);crack(118,12);crack(119,13);crack(119,12);
   ground(116,140);
   gem(120,13);gem(121,13);gem(120,12);gem(121,12);
@@ -468,8 +468,8 @@ function buildL1(){
   /* arène du boss */
   check(196,13);
   spawn('baby',206,13);
-  plat(200,3,10);plat(210,3,10);
-  gem(201,9);gem(211,9);
+  plat(200,3,12);plat(210,3,12);
+  gem(201,11);gem(211,11);
   dyn(197,13);
   g[13][216]=5; g[12][216]=5;
   EXIT={x:216*TILE,y:12*TILE};
@@ -493,10 +493,10 @@ function buildL2(){
   vine(25,3,300);
   check(30,13);
   spawn('bat',42,6);spawn('raptor',36,13);
-  plat(33,3,11);plat(38,3,9);
-  gem(34,10);gem(39,8);gem(44,13);
+  plat(33,3,12);plat(37,3,10);
+  gem(34,11);gem(38,9);gem(44,13);
   stal(33,7);stal(46,7);   /* écartées du raptor (36) et de la chauve-souris (42) */
-  dyn(39,8);
+  dyn(38,9);
   /* couloir bas : dards de cristal, il faut s'accroupir */
   ground(52,74);
   vine(50,3,290);
@@ -511,11 +511,11 @@ function buildL2(){
   vine(76,3,290);
   crack(84,13);crack(84,12);crack(85,13);crack(85,12);
   gem(86,13);gem(87,13);gem(86,12);gem(87,12);
-  plat(90,3,11);plat(95,3,9);plat(100,3,7);
-  gem(91,10);gem(96,8);gem(101,6);
+  plat(90,3,12);plat(94,3,10);plat(98,3,8);
+  gem(91,11);gem(95,9);gem(99,7);
   spawn('bat',90,5);spawn('bat',119,4,{ph:3});
   stal(92,6);stal(98,5);
-  dyn(101,6);
+  dyn(99,7);
 
   /* le grand gouffre noir : double racine */
   ground(112,150);
@@ -523,8 +523,8 @@ function buildL2(){
   vine(106,2,320);vine(110,2,320);
 
   spawn('raptor',122,13);spawn('bat',128,6);
-  plat(124,4,10);
-  gem(125,9);gem(126,9);
+  plat(124,4,12);
+  gem(125,11);gem(126,11);
   stal(130,7);stal(134,7);stal(138,7);
   spikes(142,144,13);
   gem(147,13);
@@ -534,15 +534,15 @@ function buildL2(){
 
 
   gem(162,13);gem(166,13);gem(170,13);
-  plat(160,3,10);gem(161,9);
+  plat(160,3,12);gem(161,11);
   vine(164,1,350);
   plat(165,4,6);
   idol(167,5);gem(168,5);
   /* arène du boss */
   check(186,13);
   spawn('spino',196,13);        /* boss de fin du niveau 2 */
-  plat(190,3,10);plat(202,3,10);
-  gem(191,9);gem(203,9);
+  plat(190,3,12);plat(202,3,12);
+  gem(191,11);gem(203,11);
   dyn(187,13);
   g[13][208]=5; g[12][208]=5;
   EXIT={x:208*TILE,y:12*TILE};
