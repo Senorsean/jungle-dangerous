@@ -28,6 +28,11 @@
   #bU{position:fixed;right:104px;bottom:132px;width:64px;height:64px;border-radius:50%;
     background:rgba(255,255,255,.16);border:3px solid rgba(255,255,255,.4);color:#fff;
     font:22px monospace;align-items:center;justify-content:center;z-index:10;display:none}
+  html:fullscreen,html:-webkit-full-screen{background:#000}
+  #bF{position:fixed;right:12px;top:112px;width:42px;height:42px;border-radius:9px;
+    background:rgba(0,0,0,.5);border:2px solid rgba(255,255,255,.4);color:#fff;
+    font:19px monospace;display:flex;align-items:center;justify-content:center;
+    z-index:11;cursor:pointer}
   #bP{position:fixed;right:12px;top:62px;width:42px;height:42px;border-radius:9px;
     background:rgba(0,0,0,.5);border:2px solid rgba(255,255,255,.4);color:#fff;
     font:19px monospace;display:flex;align-items:center;justify-content:center;
@@ -46,6 +51,7 @@
 <div id="err"></div>
 <div id="bM">🔊</div>
 <div id="bP">⏸</div>
+<div id="bF">⛶</div>
 <div id="bU">⬆</div>
 <script>
 "use strict";
@@ -612,6 +618,7 @@ addEventListener('keydown',e=>{
   K[e.key.toLowerCase()]=true;
   if(e.key.toLowerCase()==='m')setMute(!MUTED);
   if(e.key.toLowerCase()==='p'||e.key==='Escape')setPause(!paused);
+  if(e.key.toLowerCase()==='f')toggleFS();
   if(state!=='play'&&(e.key===' '||e.key==='Enter')) advance();
 });
 addEventListener('keyup',e=>{K[e.key.toLowerCase()]=false;});
@@ -629,6 +636,17 @@ cv.addEventListener('mousedown',()=>{audio();if(state!=='play')advance();});
   b.addEventListener('touchstart',tog);
 })();
 (function(){
+  const b=document.getElementById('bF');
+  if(!b)return;
+  if(!fsCan()){b.style.display='none';return;}
+  const tog=e=>{e.preventDefault();e.stopPropagation();audio();toggleFS();};
+  b.addEventListener('click',tog);
+  b.addEventListener('touchstart',tog);
+  const maj=()=>{b.textContent=fsOn()?'⤡':'⛶';};
+  document.addEventListener('fullscreenchange',maj);
+  document.addEventListener('webkitfullscreenchange',maj);
+})();
+(function(){
   const b=document.getElementById('bP');
   if(!b)return;
   const tog=e=>{e.preventDefault();e.stopPropagation();audio();setPause(!paused);};
@@ -641,6 +659,23 @@ function setPause(v){
   const b=document.getElementById('bP');
   if(b)b.textContent=paused?'▶':'⏸';
   if(AC&&MUSGAIN)MUSGAIN.gain.value=MUTED?0:(paused?MUSVOL*0.25:MUSVOL);
+}
+function fsOn(){return document.fullscreenElement||document.webkitFullscreenElement||null;}
+function fsCan(){
+  const d=document.documentElement;
+  return !!(d&&(d.requestFullscreen||d.webkitRequestFullscreen));
+}
+function toggleFS(){
+  const d=document.documentElement;
+  try{
+    if(fsOn()){
+      const x=document.exitFullscreen||document.webkitExitFullscreen;
+      if(x)x.call(document);
+    }else{
+      const r=d.requestFullscreen||d.webkitRequestFullscreen;
+      if(r)r.call(d);
+    }
+  }catch(e){}
 }
 function advance(){
   if(state==='win'){startLevel(LEVEL+1,true);state='play';setTrack(LEVEL===2?'cave':'level');return;}
