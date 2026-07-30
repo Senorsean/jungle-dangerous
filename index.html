@@ -869,7 +869,7 @@ function update(){
       if(Math.abs(G.x-cx)<22&&Math.abs(G.y-(P.y+22))<30){G.got=true;score+=50;SFX.gem();puff(G.x,G.y,6,'#7fe0ff',1.5);}}
     for(const it of idols){if(it.got)continue;
       if(Math.abs(it.x-cx)<26&&Math.abs(it.y-(P.y+22))<34){
-        it.got=true;P.god=480;score+=200;SFX.idol();
+        it.got=true;P.god=1800;score+=200;SFX.idol();
         puff(it.x,it.y,16,'#ffd76e',2.4);if(shake<6)shake=6;
       }}
     for(const p of pickups){if(p.got)continue;
@@ -2130,7 +2130,7 @@ function draw(){
       '← → pour prendre de l\'ampleur, ESPACE pour lâcher.',
       '↑ pour grimper le long de la corde.',
       '',
-      'Le totem doré rend intouchable 8 secondes.',
+      'Le totem doré rend intouchable 30 secondes.',
       '','Attention au rocher. Méfie-toi des raptors.','Les blocs fissurés cachent un trésor…'];
     L.forEach((l,i)=>{
       if(i>=6&&i<=8)ctx.fillStyle='#8ee06a';        /* section lianes */
