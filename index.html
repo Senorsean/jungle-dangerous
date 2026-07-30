@@ -638,7 +638,7 @@ cv.addEventListener('mousedown',()=>{audio();if(state!=='play')advance();});
 (function(){
   const b=document.getElementById('bF');
   if(!b)return;
-  if(!fsCan()){b.style.display='none';return;}
+  if(!fsCan())b.style.opacity='0.45';
   const tog=e=>{e.preventDefault();e.stopPropagation();audio();toggleFS();};
   b.addEventListener('click',tog);
   b.addEventListener('touchstart',tog);
@@ -670,7 +670,7 @@ function fsCan(){
 }
 function fsRefus(){
   const b=document.getElementById('bF');
-  if(b)b.style.display='none';
+  if(b)b.style.opacity='0.45';
   flash('PLEIN ECRAN INDISPONIBLE ICI','#e8452c');
 }
 function toggleFS(){
