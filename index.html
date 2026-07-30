@@ -2197,6 +2197,28 @@ try{
     },700);
   }
 }catch(e){ fail('initialisation',e); }
+
+/* ---------- MANETTE (version compacte) ---------- */
+document.head.insertAdjacentHTML('beforeend','<style>body.pad .tbtn{display:none}</style>');
+(function(){
+  var on=false;
+  setInterval(function(){
+    var l=navigator.getGamepads?navigator.getGamepads():[],g=null,i;
+    for(i=0;i<l.length;i++){ if(l[i]){ g=l[i]; break; } }
+    if(!g){ if(on){ on=false; document.body.classList.remove('pad'); } return; }
+    if(!on){ on=true; document.body.classList.add('pad'); audio(); flash('MANETTE CONNECTEE','#7fe0ff'); }
+    var b=function(n){ var x=g.buttons[n]; return !!x&&(x.pressed||x.value>0.5); };
+    var ax=g.axes[0]||0, ay=g.axes[1]||0;
+    K['arrowleft']  = b(14)||ax<-0.4;
+    K['arrowright'] = b(15)||ax> 0.4;
+    K['arrowdown']  = b(13)||ay> 0.4;
+    K['u']          = b(12)||ay<-0.4;
+    K[' ']          = b(0);
+    K['x']          = b(2)||b(3)||b(5)||b(7);
+    K['c']          = b(1)||b(4)||b(6);
+    if((b(0)||b(9))&&state!=='play') advance();
+  },16);
+})();
 </script>
 </body>
 </html>
