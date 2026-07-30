@@ -28,6 +28,10 @@
   #bU{position:fixed;right:104px;bottom:132px;width:64px;height:64px;border-radius:50%;
     background:rgba(255,255,255,.16);border:3px solid rgba(255,255,255,.4);color:#fff;
     font:22px monospace;align-items:center;justify-content:center;z-index:10;display:none}
+  #bP{position:fixed;right:12px;top:62px;width:42px;height:42px;border-radius:9px;
+    background:rgba(0,0,0,.5);border:2px solid rgba(255,255,255,.4);color:#fff;
+    font:19px monospace;display:flex;align-items:center;justify-content:center;
+    z-index:11;cursor:pointer}
   #bM{position:fixed;right:12px;top:12px;width:42px;height:42px;border-radius:9px;
     background:rgba(0,0,0,.5);border:2px solid rgba(255,255,255,.4);color:#fff;
     font:19px monospace;display:flex;align-items:center;justify-content:center;
@@ -41,6 +45,7 @@
 <div class="tbtn" id="bJ">▲</div><div class="tbtn" id="bA">🔨</div><div class="tbtn" id="bD">💣</div>
 <div id="err"></div>
 <div id="bM">🔊</div>
+<div id="bP">⏸</div>
 <div id="bU">⬆</div>
 <script>
 "use strict";
@@ -606,6 +611,7 @@ addEventListener('keydown',e=>{
   if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key))e.preventDefault();
   K[e.key.toLowerCase()]=true;
   if(e.key.toLowerCase()==='m')setMute(!MUTED);
+  if(e.key.toLowerCase()==='p'||e.key==='Escape')setPause(!paused);
   if(state!=='play'&&(e.key===' '||e.key==='Enter')) advance();
 });
 addEventListener('keyup',e=>{K[e.key.toLowerCase()]=false;});
@@ -622,6 +628,20 @@ cv.addEventListener('mousedown',()=>{audio();if(state!=='play')advance();});
   b.addEventListener('click',tog);
   b.addEventListener('touchstart',tog);
 })();
+(function(){
+  const b=document.getElementById('bP');
+  if(!b)return;
+  const tog=e=>{e.preventDefault();e.stopPropagation();audio();setPause(!paused);};
+  b.addEventListener('click',tog);
+  b.addEventListener('touchstart',tog);
+})();
+let paused=false;
+function setPause(v){
+  paused=(state==='play')?v:false;
+  const b=document.getElementById('bP');
+  if(b)b.textContent=paused?'▶':'⏸';
+  if(AC&&MUSGAIN)MUSGAIN.gain.value=MUTED?0:(paused?MUSVOL*0.25:MUSVOL);
+}
 function advance(){
   if(state==='win'){startLevel(LEVEL+1,true);state='play';setTrack(LEVEL===2?'cave':'level');return;}
   if(state==='title'||state==='over'||state==='final'){newGame();state='play';setTrack('level');}
@@ -2102,6 +2122,18 @@ function draw(){
     ctx.fillStyle=flashCol;ctx.fillText(flashMsg,VW/2,yb);
     ctx.textAlign='left';ctx.globalAlpha=1;
   }
+  if(paused&&state==='play'){
+    ctx.fillStyle='rgba(6,16,10,.72)';ctx.fillRect(0,0,VW,VH);
+    ctx.textAlign='center';
+    ctx.fillStyle='rgba(8,20,12,.9)';ctx.fillRect(VW/2-190,VH/2-64,380,128);
+    ctx.strokeStyle='#8ee06a';ctx.lineWidth=3;ctx.strokeRect(VW/2-190,VH/2-64,380,128);
+    ctx.font='bold 44px monospace';
+    ctx.fillStyle='#12200f';ctx.fillText('PAUSE',VW/2+3,VH/2-3);
+    ctx.fillStyle='#ffd23f';ctx.fillText('PAUSE',VW/2,VH/2-6);
+    ctx.font='15px monospace';ctx.fillStyle='#cfe6c0';
+    ctx.fillText('Bouton pause, touche P ou Start',VW/2,VH/2+34);
+    ctx.textAlign='left';
+  }
   /* le bouton "monter" n'apparaît que suspendue */
   const bu=document.getElementById('bU');
   if(bu)bu.style.display=(state==='play'&&P&&P.vine!==null
@@ -2164,16 +2196,20 @@ function hideBoot(){
 function step(now){
   if(ERRSHOWN)return false;
   try{
+    if(state!=='play'&&paused)paused=false;
     acc+=Math.min(now-last,100);last=now;
-    let guard=0;
-    while(acc>=1000/60&&guard++<8){
-      update();
-      prevJ=jump();prevA=atkKey();prevD=dynKey();prevS=relKey();
-      acc-=1000/60;
+    if(paused){acc=0;}
+    else{
+      let guard=0;
+      while(acc>=1000/60&&guard++<8){
+        update();
+        prevJ=jump();prevA=atkKey();prevD=dynKey();prevS=relKey();
+        acc-=1000/60;
+      }
+      if(guard>=8)acc=0;
     }
-    if(guard>=8)acc=0;
     draw();
-    musicTick();
+    if(!paused)musicTick();
     hideBoot();
   }catch(e){fail('boucle de jeu (frame '+timer+')',e);return false;}
   return true;
@@ -2201,7 +2237,7 @@ try{
 /* ---------- MANETTE (version compacte) ---------- */
 document.head.insertAdjacentHTML('beforeend','<style>body.pad .tbtn{display:none}</style>');
 (function(){
-  var on=false;
+  var on=false, ps=0;
   setInterval(function(){
     var l=navigator.getGamepads?navigator.getGamepads():[],g=null,i;
     for(i=0;i<l.length;i++){ if(l[i]){ g=l[i]; break; } }
@@ -2217,6 +2253,7 @@ document.head.insertAdjacentHTML('beforeend','<style>body.pad .tbtn{display:none
     K['x']          = b(2)||b(3)||b(5)||b(7);
     K['c']          = b(1)||b(4)||b(6);
     if((b(0)||b(9))&&state!=='play') advance();
+    if(b(9)&&state==='play'&&!ps){ ps=1; setPause(!paused); } if(!b(9)) ps=0;
   },16);
 })();
 </script>
