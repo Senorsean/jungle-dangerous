@@ -371,6 +371,7 @@ const SFX={
   godwarn:()=>seq([84,84],.13,.12,.07,'square'),
   godend:()=>seq([84,79,72],.09,.22,.08,'square'),
   bottes:()=>{seq([60,67,72,79],.055,.3,.12,'triangle');tone(180,.2,'square',.1,340);},
+  feu:()=>{sn(.18,.09,'lowpass',1400,.8);tone(340,.22,'sawtooth',.09,-190);},
   torche:()=>{sn(.35,.13,'lowpass',1600,.8);seq([69,76,81],.07,.4,.11,'triangle');
     tone(90,.4,'sawtooth',.12,60);},
   /* le bébé : couinements, pleurs et bruits peu distingués */
@@ -626,12 +627,13 @@ function reprendre(){
   flash('PARTIE REPRISE','#8ee06a');
   return true;
 }
+let fires=[];
 let bprojs=[];   /* larmes, doudou et... autres projectiles du bébé */
 let flashMsg='',flashT=0,flashCol='#ffd23f';
 function flash(m,c){flashMsg=m;flashCol=c||'#ffd23f';flashT=120;}
 let ambient=[];
 function resetLevel(fromCheck){
-  ents=[];darts=[];parts=[];bombs=[];bprojs=[];
+  ents=[];darts=[];parts=[];bombs=[];bprojs=[];fires=[];
   for(const s of spawns){
     if(s.type==='raptor')ents.push({type:'raptor',x:s.x,y:s.y,vx:1.1*(s.opt.dir||1),vy:0,w:44,h:30,hp:1,f:0,hurt:0,r:s.opt.r||100,ox:s.x});
     if(s.type==='ptero')ents.push({type:'ptero',x:s.x,y:s.y,w:52,h:22,hp:1,f:Math.random()*6,hurt:0,oy:s.y,ph:s.opt.ph||0});
@@ -671,7 +673,7 @@ function startLevel(n,keep){
 function newGame(){startLevel(1,false);}
 function spawnPlayer(){
   P={x:respawn.x,y:respawn.y,vx:0,vy:0,w:22,h:44,face:1,onG:false,crouch:false,
-     atk:0,inv:90,f:0,dead:0,coyote:0,jbuf:0,vine:null,vgrabCD:0,god:0,boots:0};
+     atk:0,inv:90,f:0,dead:0,coyote:0,jbuf:0,vine:null,vgrabCD:0,god:0,boots:0,fcd:0};
 }
 
 /* ---------- ENTRÉES ---------- */
@@ -892,6 +894,26 @@ function updateBprojs(){
   }
   bprojs=bprojs.filter(b=>!b.gone);
 }
+function updateFires(){
+  for(const f of fires){
+    f.vy+=0.05;
+    f.x+=f.vx;f.y+=f.vy;f.t--;f.f+=0.35;
+    if(timer%2===0)puff(f.x-Math.sign(f.vx)*8,f.y,1,'#ff9a30',0.9);
+    if(solid(tileAt(f.x,f.y))){
+      f.gone=true;puff(f.x,f.y,9,'#ff9a30',2.2);sn(.12,.07,'lowpass',900);
+    }
+    if(!f.gone)for(const e of ents){
+      if(e.dead||e.type==='boulder')continue;
+      if(f.x>e.x&&f.x<e.x+e.w&&f.y>e.y&&f.y<e.y+e.h){
+        hurtEnemy(e,e.isBoss?1:2,Math.sign(f.vx));
+        f.gone=true;puff(f.x,f.y,12,'#ff9a30',2.6);
+        break;
+      }
+    }
+    if(f.t<=0)f.gone=true;
+  }
+  fires=fires.filter(f=>!f.gone);
+}
 function updateStals(){
   for(const st of stals){
     if(st.state===0){
@@ -1009,7 +1031,14 @@ function update(){
     if(!hang&&(tileAt(cx,feet)===3||tileAt(cx,P.y+yOff+4)===3))killPlayer();
     if(P.y>H*TILE+80)killPlayer(),P.inv=0,P.dead=Math.max(P.dead,1);
     if(P.atk>0)P.atk--;
-    if(atkKey()&&!prevA&&P.atk===0&&!P.crouch&&!hang){P.atk=22;SFX.hit();}
+    if(atkKey()&&!prevA&&P.atk===0&&!P.crouch&&!hang){
+      P.atk=22;SFX.hit();
+      if(hasTorch&&P.fcd<=0){
+        fires.push({x:P.x+P.w/2+P.face*20,y:P.y+16,vx:P.face*6.2,vy:-0.5,t:120,f:0});
+        P.fcd=20;SFX.feu();
+      }
+    }
+    if(P.fcd>0)P.fcd--;
     if(P.atk>6&&P.atk<18){
       const hx=P.face===1?P.x+P.w:P.x-42, hb={x:hx,y:P.y-6,w:42,h:46};
       for(const e of ents){if(e.dead||e.hurt>0)continue;
@@ -1238,7 +1267,7 @@ function update(){
   }
   ents=ents.filter(e=>!e.dead);
 
-  idleVines();updateStals();updateBprojs();
+  idleVines();updateStals();updateBprojs();updateFires();
   if(sauvegarde_a_faire){sauvegarde_a_faire=false;sauvegarder(true);}
   for(const p of parts){p.x+=p.vx;p.y+=p.vy;p.vy+=0.2;p.life--;}
   parts=parts.filter(p=>p.life>0);
@@ -2026,6 +2055,23 @@ function drawIdols(){
       {ctx.fillStyle='#fff';ctx.fillRect(sx+8,sy-16,3,3);}
   }
 }
+function drawFires(){
+  for(const f of fires){
+    const sx=f.x-cam.x, sy=f.y;
+    if(sx<-40||sx>VW+40)continue;
+    const p=1+Math.sin(f.f*2)*0.18;
+    ctx.fillStyle='rgba(255,150,50,.22)';
+    ctx.beginPath();ctx.arc(sx,sy,17*p,0,7);ctx.fill();
+    ctx.fillStyle='#c0392b';ctx.beginPath();ctx.arc(sx,sy,9*p,0,7);ctx.fill();
+    ctx.fillStyle='#ff7b2e';ctx.beginPath();ctx.arc(sx,sy,6.5*p,0,7);ctx.fill();
+    ctx.fillStyle='#ffd23f';ctx.beginPath();ctx.arc(sx-Math.sign(f.vx),sy-1,3.6*p,0,7);ctx.fill();
+    ctx.fillStyle='#fff3c4';ctx.fillRect(sx-1.5,sy-2,3,3);
+    ctx.fillStyle='rgba(255,123,46,.35)';
+    ctx.fillRect(sx-Math.sign(f.vx)*14,sy-2.5,10,5);
+    ctx.fillStyle='rgba(255,123,46,.18)';
+    ctx.fillRect(sx-Math.sign(f.vx)*24,sy-2,8,4);
+  }
+}
 function drawBoots(){
   for(const b of boots){
     if(b.got)continue;
@@ -2270,6 +2316,7 @@ function draw(){
   drawStals();
   drawVines();
   drawIdols();
+  drawFires();
   drawBoots();
   drawTorches();
   drawBprojs();
