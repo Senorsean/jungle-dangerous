@@ -2835,7 +2835,7 @@ function bgArt(){
    avance, Sam s'arrête -> le décor se fige). Entre deux images de la vidéo,
    on décale l'image du panoramique mesuré (VPAN) : défilement fluide à 60 i/s
    même quand la vidéo n'avance qu'à 6 ou 7 images par seconde. */
-const VID={el:null,ok:false,img:0,M:48,fps:24,tx:0,seekT:0,rate:1,vue:false};
+const VID={el:null,ok:false,img:0,M:48,fps:24,tx:0,seekT:0,rate:1,vue:false,K:0.95,fade:0};
 function chargerVideo(){
   if(typeof ART==='undefined'||!ART.video||!ART.vpan)return;
   let v=null;
@@ -2872,26 +2872,51 @@ function videoPause(){const v=VID.el;if(v&&!v.paused)try{v.pause();}catch(e){}}
 function drawVideoFond(){
   const v=VID.el;if(!v||!VID.ok||v.readyState<2)return false;
   const P=ART.vpan,N=P.length,pmax=P[N-1];
-  /* position voulue dans le panoramique */
+  /* position voulue dans le panoramique : le décor suit Sam à 95 % de sa vitesse,
+     soit une lecture vers 0,37x quand elle court ; au bout de la vidéo on repart
+     au début avec un fondu enchaîné */
   let X;
-  if(state==='title'){VID.tx+=0.9;if(VID.tx>pmax-2)VID.tx=0;X=VID.tx;}
-  else X=Math.max(0,Math.min(pmax,cam.x*pmax/Math.max(1,W*TILE-VW)));
-  const fi=imgPour(X);
+  if(state==='title'){VID.tx+=2.6;X=VID.tx;}
+  else X=Math.max(0,cam.x*VID.K);
+  const tour=Math.floor(X/pmax), Xw=X-tour*pmax;
+  const now=performance.now(), dts=Math.max(1,Math.min(100,now-(VID.tLast||now-16)))/1000;
+  const vit=VID.xLast===undefined||tour!==VID.tour?0:(Xw-VID.xLast)/dts;
+  VID.vit=(VID.vit||0)*0.8+vit*0.2;VID.tLast=now;VID.xLast=Xw;
+  const fi=imgPour(Xw);
   const cur=VID.vue?VID.img:Math.max(0,Math.min(N-1,Math.floor(v.currentTime*VID.fps+0.01)));
+  /* raccord de boucle : on fige l'image courante pour la fondre dans la nouvelle */
+  if(VID.tour!==undefined&&tour!==VID.tour){
+    if(!VID.snap){const o=mkOS(1056,VH);VID.snap=o[0];VID.snx=o[1];}
+    if(VID.snx){try{VID.snx.clearRect(0,0,1056,VH);VID.snx.drawImage(v,0,0,1056,VH);
+      VID.snapX=X-(VID.xAff||0);VID.fade=1;}catch(e){VID.fade=0;}}
+  }
+  VID.tour=tour;
   const tt=(fi+0.5)/VID.fps;
-  /* pilotage de la lecture */
+  /* pilotage de la lecture : vitesse prévue d'après la caméra + petite correction */
   if(v.seeking){}
   else if(Math.abs(fi-cur)>8||(fi<cur-1&&timer-VID.seekT>6)){
     videoPause();try{v.currentTime=tt;}catch(e){}VID.seekT=timer;
-  }else if(fi>cur){
-    const r=Math.max(0.0625,Math.min(4,(tt-v.currentTime)*3+0.15));
-    if(Math.abs(r-VID.rate)>0.08){try{v.playbackRate=r;}catch(e){}VID.rate=r;}
-    if(v.paused){const pr=v.play();if(pr&&pr.catch)pr.catch(()=>{});}
+  }else if(fi>cur||VID.vit>5){
+    const pas=Math.max(4,(P[Math.min(N-1,fi+1)]-P[Math.max(0,fi-1)])/2);
+    const r=Math.max(0.0625,Math.min(4,VID.vit/(pas*VID.fps)+(tt-v.currentTime)*1.5));
+    if(Math.abs(r-VID.rate)>0.04){try{v.playbackRate=r;}catch(e){}VID.rate=r;}
+    if(v.paused&&fi>=cur){const pr=v.play();if(pr&&pr.catch)pr.catch(()=>{});}
   }else videoPause();
   /* image affichée recalée sur la position exacte */
-  const dx=Math.max(-VID.M,Math.min(VID.M,X-P[Math.min(cur,N-1)]));
+  const ecart=Xw-P[Math.min(cur,N-1)], juste=!v.seeking&&Math.abs(ecart)<=VID.M*1.5;
+  const dx=Math.max(-VID.M,Math.min(VID.M,ecart));
   ctx.imageSmoothingEnabled=true;
-  try{ctx.drawImage(v,Math.round(-VID.M-dx),0,1056,VH);}catch(e){return false;}
+  const fondu=VID.fade>0&&VID.snap;
+  if(juste||!fondu){
+    try{ctx.drawImage(v,Math.round(-VID.M-dx),0,1056,VH);}catch(e){ctx.imageSmoothingEnabled=false;return false;}
+    VID.xAff=dx;
+  }
+  if(fondu){
+    ctx.globalAlpha=juste?VID.fade:1;
+    ctx.drawImage(VID.snap,Math.round(-VID.M-(X-VID.snapX)),0);
+    ctx.globalAlpha=1;
+    if(juste)VID.fade-=1/30;
+  }
   ctx.imageSmoothingEnabled=false;
   return true;
 }
