@@ -125,6 +125,7 @@ function audio(){
       for(let i=0;i<n;i++)ch[i]=Math.random()*2-1;
       MUS.next=AC.currentTime+.08;
     }catch(e){AC=null;}
+    if(AC)chargerMusiqueFichier();
   }
   if(AC&&AC.state==='suspended')AC.resume();
 }
@@ -327,6 +328,7 @@ function musStep(s,t){
 /* ordonnanceur à anticipation : indépendant du framerate */
 function musicTick(){
   if(!AC||!MUSGAIN||!MUS.track)return;
+  if(musFichierActif())return;              /* la bande-son joue : pas de synthé */
   MUS.s16=60/MUS.bpm/4;
   const look=AC.currentTime+.16;
   if(MUS.next<AC.currentTime)MUS.next=AC.currentTime+.04;
@@ -342,6 +344,51 @@ function setTrack(name){
   MUS.track=name;MUS.step=0;
   MUS.bpm=name==='boss'?152:(name==='title'?100:(name==='cave'?112:(name==='lave'?146:(name==='glace'?104:132))));
   if(AC)MUS.next=Math.max(AC.currentTime+.06,MUS.next);
+}
+/* ============================================================
+   BANDE-SON : « Crest of the Canopy » (fichier musique.mp3 à côté du jeu).
+   Décodée une fois puis jouée en boucle sans coupure ; la musique
+   synthétisée ne sert plus que de secours si le fichier est introuvable.
+   ============================================================ */
+const MUSF={url:'musique.mp3',etat:0,buf:null,src:null,el:null,pos:0,t0:0,gain:null,vol:1.25};
+function chargerMusiqueFichier(){
+  if(MUSF.etat||!AC)return;
+  MUSF.etat=1;
+  const secours=()=>{                       /* page ouverte en local (file://) : simple lecteur audio */
+    try{
+      const el=new Audio(MUSF.url);el.loop=true;el.preload='auto';
+      el.addEventListener('canplay',()=>{if(MUSF.etat===1){MUSF.etat=3;}},{once:true});
+      el.addEventListener('error',()=>{MUSF.etat=-1;});
+      MUSF.el=el;
+    }catch(e){MUSF.etat=-1;}
+  };
+  try{
+    fetch(MUSF.url).then(r=>{if(!r.ok)throw new Error('http '+r.status);return r.arrayBuffer();})
+      .then(ab=>new Promise((ok,ko)=>{const p=AC.decodeAudioData(ab,ok,ko);if(p&&p.then)p.then(ok,ko);}))
+      .then(b=>{MUSF.buf=b;MUSF.etat=2;
+        MUSF.gain=AC.createGain();MUSF.gain.gain.value=MUSF.vol;MUSF.gain.connect(MUSGAIN);})
+      .catch(secours);
+  }catch(e){secours();}
+}
+/* la bande-son prend le relais dès qu'elle est prête (ou en cours de chargement) */
+function musFichierActif(){return MUSF.etat===1||MUSF.etat===2||MUSF.etat===3;}
+function musFichierMaj(){
+  if(!AC)return;
+  const veut=!!MUS.track&&!paused;
+  if(MUSF.etat===2){
+    if(veut&&!MUSF.src){
+      const s=AC.createBufferSource();s.buffer=MUSF.buf;s.loop=true;s.connect(MUSF.gain);
+      const t=AC.currentTime+.05;s.start(t,MUSF.pos%MUSF.buf.duration);
+      MUSF.src=s;MUSF.t0=t-MUSF.pos;
+    }else if(!veut&&MUSF.src){
+      MUSF.pos=(AC.currentTime-MUSF.t0)%MUSF.buf.duration;
+      try{MUSF.src.stop();}catch(e){}MUSF.src=null;
+    }
+  }else if(MUSF.etat===3&&MUSF.el){
+    MUSF.el.volume=MUTED?0:Math.min(1,MUSVOL*MUSF.vol);
+    if(veut&&MUSF.el.paused){const p=MUSF.el.play();if(p&&p.catch)p.catch(()=>{});}
+    else if(!veut&&!MUSF.el.paused)MUSF.el.pause();
+  }
 }
 /* atténue la musique pendant les gros bruitages */
 function duck(amt,dur){
@@ -4606,6 +4653,7 @@ function step(now){
     }
     draw();
     if(!paused)musicTick();
+    musFichierMaj();
     hideBoot();
   }catch(e){fail('boucle de jeu (frame '+timer+')',e);return false;}
   return true;
