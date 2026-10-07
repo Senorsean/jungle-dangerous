@@ -1576,26 +1576,25 @@ function update(){
     if(e.type==='raptor'){
       e.vy+=0.42;e.y+=e.vy;
       if(rectHitsSolid(e.x,e.y,e.w,e.h)){let it=0;while(rectHitsSolid(e.x,e.y,e.w,e.h)&&it++<120)e.y-=0.5;e.vy=0;}
-      const chase=Math.abs(P.x-e.x)<230&&Math.abs(P.y-e.y)<80&&P.dead===0;
+      if(e.bloque>0)e.bloque--;
+      const chase=Math.abs(P.x-e.x)<230&&Math.abs(P.y-e.y)<80&&P.dead===0&&!(e.bloque>0);
       const sp=chase?1.9:1.1;
       const dxc=(P.x+P.w/2)-(e.x+e.w/2);
       if(!e.face)e.face=Math.sign(e.vx)||1;
       if(e.hurt===0){
-        if(chase)e.vx=Math.abs(dxc)<10?0:Math.sign(dxc)*sp;      /* juste sous Sam : il l'attend */
+        /* il fonce sur Sam ; juste sous elle, il la dépasse puis revient (jamais immobile) */
+        if(chase&&Math.abs(dxc)>=26)e.vx=Math.sign(dxc)*sp;
         else e.vx=(Math.sign(e.vx)||e.face)*sp;
       }
       e.x+=e.vx;
       const ahead=e.x+(e.vx>0?e.w+2:-2);
-      if(e.vx&&(rectHitsSolid(ahead,e.y,2,e.h)||!solid(tileAt(ahead,e.y+e.h+6)))){
-        e.x-=e.vx;
-        if(chase&&e.hurt===0)e.vx=0;                              /* il guette au bord au lieu de gigoter */
-        else e.vx*=-1;
+      if(rectHitsSolid(ahead,e.y,2,e.h)||!solid(tileAt(ahead,e.y+e.h+6))){
+        e.x-=e.vx;e.vx*=-1;
+        /* bord de plateforme : il fait les cent pas un moment avant de revenir à la charge */
+        if(chase&&e.hurt===0)e.bloque=45+Math.floor(Math.random()*45);
       }
-      if(!chase&&Math.abs(e.x-e.ox)>(e.r||100)){e.vx=Math.sign(e.ox-e.x)*sp;}
-      if(e.hurt===0){
-        if(e.vx)e.face=Math.sign(e.vx);
-        else if(chase&&Math.abs(dxc)>14)e.face=Math.sign(dxc);
-      }
+      if(!chase&&!(e.bloque>0)&&Math.abs(e.x-e.ox)>(e.r||100)){e.vx=Math.sign(e.ox-e.x)*sp;}
+      if(e.hurt===0&&e.vx)e.face=Math.sign(e.vx);
     }
     if(e.type==='ptero'){
       e.y=e.oy+Math.sin(e.f*0.9+e.ph)*46;
