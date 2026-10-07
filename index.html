@@ -346,49 +346,70 @@ function setTrack(name){
   if(AC)MUS.next=Math.max(AC.currentTime+.06,MUS.next);
 }
 /* ============================================================
-   BANDE-SON : « Crest of the Canopy » (fichier musique.mp3 à côté du jeu).
-   Décodée une fois puis jouée en boucle sans coupure ; la musique
-   synthétisée ne sert plus que de secours si le fichier est introuvable.
+   BANDE-SON : « Crest of the Canopy » (musique.mp3) pendant le jeu,
+   « Colossal Baby Tantrum » (boss.mp3) pendant les combats de boss.
+   Décodées une fois, jouées en boucle sans coupure, enchaînées en fondu ;
+   la musique synthétisée ne sert plus que de secours.
    ============================================================ */
-const MUSF={url:'musique.mp3',etat:0,buf:null,src:null,el:null,pos:0,t0:0,gain:null,vol:1.25};
-function chargerMusiqueFichier(){
-  if(MUSF.etat||!AC)return;
-  MUSF.etat=1;
-  const secours=()=>{                       /* page ouverte en local (file://) : simple lecteur audio */
+const MUSF={etat:0,vol:1.25,cour:null,pistes:{
+  jeu:{url:'musique.mp3',ok:0,buf:null,src:null,g:null,el:null,pos:0,t0:0},
+  boss:{url:'boss.mp3',ok:0,buf:null,src:null,g:null,el:null,pos:0,t0:0}}};
+function pisteNiveau(){return LEVEL===2?'cave':(LEVEL===3?'lave':(LEVEL===4?'glace':'level'));}
+function chargerPiste(cle){
+  const p=MUSF.pistes[cle];p.ok=1;
+  const secours=()=>{                       /* page ouverte en local (file://) : lecteur audio simple */
     try{
-      const el=new Audio(MUSF.url);el.loop=true;el.preload='auto';
-      el.addEventListener('canplay',()=>{if(MUSF.etat===1){MUSF.etat=3;}},{once:true});
-      el.addEventListener('error',()=>{MUSF.etat=-1;});
-      MUSF.el=el;
-    }catch(e){MUSF.etat=-1;}
+      const el=new Audio(p.url);el.loop=true;el.preload='auto';
+      el.addEventListener('canplay',()=>{if(p.ok===1)p.ok=3;},{once:true});
+      el.addEventListener('error',()=>{p.ok=-1;});
+      p.el=el;
+    }catch(e){p.ok=-1;}
   };
   try{
-    fetch(MUSF.url).then(r=>{if(!r.ok)throw new Error('http '+r.status);return r.arrayBuffer();})
-      .then(ab=>new Promise((ok,ko)=>{const p=AC.decodeAudioData(ab,ok,ko);if(p&&p.then)p.then(ok,ko);}))
-      .then(b=>{MUSF.buf=b;MUSF.etat=2;
-        MUSF.gain=AC.createGain();MUSF.gain.gain.value=MUSF.vol;MUSF.gain.connect(MUSGAIN);})
+    fetch(p.url).then(r=>{if(!r.ok)throw new Error('http '+r.status);return r.arrayBuffer();})
+      .then(ab=>new Promise((ok,ko)=>{const q=AC.decodeAudioData(ab,ok,ko);if(q&&q.then)q.then(ok,ko);}))
+      .then(b=>{p.buf=b;p.g=AC.createGain();p.g.gain.value=0;p.g.connect(MUSGAIN);p.ok=2;})
       .catch(secours);
   }catch(e){secours();}
 }
+function chargerMusiqueFichier(){
+  if(MUSF.etat||!AC)return;
+  MUSF.etat=1;chargerPiste('jeu');chargerPiste('boss');
+}
 /* la bande-son prend le relais dès qu'elle est prête (ou en cours de chargement) */
-function musFichierActif(){return MUSF.etat===1||MUSF.etat===2||MUSF.etat===3;}
+function musFichierActif(){const k=MUSF.pistes.jeu.ok;return k===1||k===2||k===3;}
+function pisteArreter(cle,fondu,raz){
+  const p=MUSF.pistes[cle];
+  if(p.src){
+    const t=AC.currentTime;p.pos=raz?0:(t-p.t0)%p.buf.duration;
+    p.g.gain.cancelScheduledValues(t);p.g.gain.setValueAtTime(p.g.gain.value,t);
+    p.g.gain.linearRampToValueAtTime(0,t+(fondu||.03));
+    try{p.src.stop(t+(fondu||.03)+.02);}catch(e){}
+    p.src=null;
+  }else if(p.el&&!p.el.paused){p.el.pause();if(raz)p.el.currentTime=0;}
+  else if(raz){p.pos=0;if(p.el)try{p.el.currentTime=0;}catch(e){}}
+}
+function pisteJouer(cle,fondu){
+  const p=MUSF.pistes[cle];
+  if(p.ok===2&&!p.src){
+    const s=AC.createBufferSource();s.buffer=p.buf;s.loop=true;s.connect(p.g);
+    const t=AC.currentTime+.04;s.start(t,p.pos%p.buf.duration);
+    p.src=s;p.t0=t-p.pos;
+    p.g.gain.cancelScheduledValues(t);p.g.gain.setValueAtTime(0,t);p.g.gain.linearRampToValueAtTime(MUSF.vol,t+(fondu||.05));
+  }else if(p.ok===3&&p.el&&p.el.paused){const q=p.el.play();if(q&&q.catch)q.catch(()=>{});}
+}
 function musFichierMaj(){
-  if(!AC)return;
+  if(!AC||!MUSF.etat)return;
+  for(const k in MUSF.pistes){const el=MUSF.pistes[k].el;if(el)el.volume=MUTED?0:Math.min(1,MUSVOL*MUSF.vol);}
   const veut=!!MUS.track&&!paused;
-  if(MUSF.etat===2){
-    if(veut&&!MUSF.src){
-      const s=AC.createBufferSource();s.buffer=MUSF.buf;s.loop=true;s.connect(MUSF.gain);
-      const t=AC.currentTime+.05;s.start(t,MUSF.pos%MUSF.buf.duration);
-      MUSF.src=s;MUSF.t0=t-MUSF.pos;
-    }else if(!veut&&MUSF.src){
-      MUSF.pos=(AC.currentTime-MUSF.t0)%MUSF.buf.duration;
-      try{MUSF.src.stop();}catch(e){}MUSF.src=null;
-    }
-  }else if(MUSF.etat===3&&MUSF.el){
-    MUSF.el.volume=MUTED?0:Math.min(1,MUSVOL*MUSF.vol);
-    if(veut&&MUSF.el.paused){const p=MUSF.el.play();if(p&&p.catch)p.catch(()=>{});}
-    else if(!veut&&!MUSF.el.paused)MUSF.el.pause();
+  const b=MUSF.pistes.boss.ok;
+  const cle=(MUS.track==='boss'&&(b===2||b===3))?'boss':'jeu';
+  if(!veut){if(MUSF.cour){pisteArreter(MUSF.cour,.03,false);MUSF.cour=null;}return;}
+  if(MUSF.cour!==cle){
+    if(MUSF.cour)pisteArreter(MUSF.cour,.7,MUSF.cour==='boss');   /* le combat suivant reprendra du début */
+    MUSF.cour=cle;
   }
+  pisteJouer(cle,MUSF.cour===cle&&cle==='boss'?.25:.7);
 }
 /* atténue la musique pendant les gros bruitages */
 function duck(amt,dur){
@@ -924,6 +945,7 @@ function flash(m,c){flashMsg=m;flashCol=c||'#ffd23f';flashT=120;}
 let ambient=[];
 function resetLevel(fromCheck){
   KOS.length=0;
+  if(MUS.track==='boss')setTrack(pisteNiveau());
   ents=[];darts=[];parts=[];bombs=[];bprojs=[];fires=[];
   for(const s of spawns){
     if(s.type==='raptor')ents.push({type:'raptor',x:s.x,y:s.y,vx:1.1*(s.opt.dir||1),vy:0,w:44,h:30,hp:1,f:0,hurt:0,r:s.opt.r||100,ox:s.x});
@@ -1427,6 +1449,7 @@ function hurtEnemy(e,dmg,kb){
     SFX.babyPoop();
   }
   if(e.hp<=0){
+    if(e.isBoss)setTrack(pisteNiveau());
     puff(e.x+e.w/2,e.y+e.h/2,16,e.type==='trex'?'#8a6':'#d84');
     score+=(e.type==='trex'||e.type==='spino')?600:e.type==='stego'?150:100;
     if(e.type==='trex'||e.type==='spino'){SFX.roar();shake=16;setTrack(LEVEL===2?'cave':(LEVEL===3?'lave':(LEVEL===4?'glace':'level')));}
